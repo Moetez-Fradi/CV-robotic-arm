@@ -1,0 +1,7 @@
+{
+  "typical_W": 28.8285294117647,
+  "worst_W": 84.66228408165382,
+  "supply_W": 300.0,
+  "servo_rail_typical_A": 1.7999999999999998,
+  "servo_rail_worst_A": 10.0
+}

@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arm design dashboard</title>
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #ffffff; --ink: #1c2330; --muted: #5f6b7c; --line: #d9dee6;
+  --accent: #c2570c; --accent-ink: #ffffff; --ok: #1a7f37; --ok-bg: #dff3e4; --bad: #b42318; --bad-bg: #fde4e1;
+  --warn: #8a5a00; --warn-bg: #fdf0cf; --idle-bg: #e8ebf0; --code: #eef0f4; --focus: #2563eb;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151b; --panel: #1b2029; --ink: #e7eaf0; --muted: #9aa5b5; --line: #303746;
+    --accent: #f08a3c; --accent-ink: #1a1206; --ok: #5fd08a; --ok-bg: #173524; --bad: #ff8f85; --bad-bg: #40201d;
+    --warn: #f1c75b; --warn-bg: #3a2e12; --idle-bg: #2a303c; --code: #262c38; --focus: #7aa7ff;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 system-ui, "Segoe UI", sans-serif; }
+header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line);
+  padding: 10px 20px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+header h1 { font-size: 16px; margin: 0; font-weight: 650; }
+header .sub { color: var(--muted); font-size: 12.5px; }
+.spacer { flex: 1; }
+main { display: grid; grid-template-columns: minmax(380px, 520px) minmax(0, 1fr); gap: 18px; padding: 18px 20px 60px; align-items: start; }
+@media (max-width: 1050px) { main { grid-template-columns: 1fr; } }
+section.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+h2 { font-size: 14px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 650; }
+details { border-top: 1px solid var(--line); padding: 8px 0; }
+details:first-of-type { border-top: 0; }
+summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+.fields { display: grid; grid-template-columns: 1fr 96px 46px; gap: 6px 8px; align-items: center; margin: 8px 0 4px; }
+.fields label { color: var(--ink); }
+.unit { color: var(--muted); font-size: 12px; }
+input[type=number], input[type=text], select { width: 100%; padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg); color: var(--ink); font: inherit; font-variant-numeric: tabular-nums; }
+input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+input.changed { border-color: var(--accent); }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; }
+table.edit td { padding: 3px 3px; border-bottom: 0; }
+table.edit input[type=number] { min-width: 62px; }
+table.edit input[type=text] { min-width: 150px; }
+button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 7px; padding: 6px 12px; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--muted); }
+button:disabled { opacity: .5; cursor: default; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 650; }
+button.icon { padding: 2px 8px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.hint { color: var(--muted); font-size: 12.5px; }
+.msg { margin-top: 10px; padding: 8px 10px; border-radius: 7px; display: none; }
+.msg.err { display: block; background: var(--bad-bg); color: var(--bad); }
+.msg.ok { display: block; background: var(--ok-bg); color: var(--ok); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 10px; }
+.card { border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; background: var(--bg); display: flex; flex-direction: column; gap: 6px; }
+.card .top { display: flex; gap: 8px; align-items: center; }
+.card .name { font-weight: 650; flex: 1; }
+.card .nums { font-size: 13px; color: var(--ink); min-height: 40px; }
+.card .nums div { display: flex; justify-content: space-between; gap: 8px; }
+.card .nums span:last-child { font-variant-numeric: tabular-nums; font-weight: 600; }
+.card .err { color: var(--bad); font-size: 12.5px; overflow-wrap: anywhere; }
+.chip { font-size: 11.5px; font-weight: 650; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.chip.ok { background: var(--ok-bg); color: var(--ok); } .chip.bad { background: var(--bad-bg); color: var(--bad); }
+.chip.warn { background: var(--warn-bg); color: var(--warn); } .chip.idle { background: var(--idle-bg); color: var(--muted); }
+.chip.run { background: var(--accent); color: var(--accent-ink); }
+pre { background: var(--code); padding: 10px; border-radius: 7px; overflow: auto; font-size: 12px; max-height: 260px; margin: 8px 0 0; white-space: pre-wrap; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 7px 10px; color: var(--muted); }
+.tabs button.active { color: var(--ink); border-bottom-color: var(--accent); font-weight: 650; }
+.report { max-width: 980px; }
+.report h1 { font-size: 20px; margin: 4px 0 10px; } .report h2 { font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--ink); margin: 22px 0 8px; }
+.report h3 { font-size: 14px; margin: 16px 0 6px; }
+.report img, .report video { max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; background: #fff; margin: 6px 0; }
+.report blockquote { margin: 10px 0; padding: 8px 12px; border-left: 3px solid var(--warn); background: var(--warn-bg); color: var(--ink); border-radius: 0 7px 7px 0; }
+.report code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+.report .tablewrap { margin: 8px 0 14px; }
+.pass { color: var(--ok); font-weight: 650; } .fail { color: var(--bad); font-weight: 700; }
+a { color: var(--accent); }
+main[hidden] { display: none !important; }
+.nav { display: flex; gap: 4px; }
+.nav a { padding: 6px 12px; border-radius: 7px; text-decoration: none; color: var(--muted); font-weight: 600; }
+.nav a.active { color: var(--ink); background: var(--idle-bg); }
+.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex: none; }
+.mjviews { display: grid; grid-template-columns: 1.05fr 1fr; gap: 14px; }
+@media (max-width: 800px) { .mjviews { grid-template-columns: 1fr; } }
+.mjviews svg { width: 100%; height: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; }
+.mjsliders { display: grid; gap: 4px; margin: 10px 0; }
+.mjrow { display: grid; grid-template-columns: 14px 150px minmax(120px, 1fr) 46px; gap: 10px; align-items: center; padding: 3px 6px; border-radius: 7px; cursor: pointer; }
+.mjrow.sel { background: var(--idle-bg); }
+.mjrow input[type=range] { width: 100%; accent-color: var(--accent); }
+.mjrow .val { font-variant-numeric: tabular-nums; text-align: right; }
+.mjcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.mjcard { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--bg); cursor: pointer; }
+.mjcard.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.mjcard .top { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.mjcard .name { font-weight: 650; flex: 1; font-size: 15px; }
+.mjcard p { margin: 4px 0 8px; }
+.kv { display: grid; grid-template-columns: 38% 1fr; gap: 8px; padding: 3px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.kv span:first-child { color: var(--muted); }
+.how { max-width: 900px; } .how p { margin: 8px 0; }
+.panelhead p { margin: 0 0 10px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Arm design dashboard</h1>
+    <div class="sub">RAS Build Challenge, Project 3. Edit the values, run the experiments, read the reports.</div>
+  </div>
+  <nav class="nav"><a id="navDesign" class="active" href="#">Design and experiments</a><a id="navModel" href="#model">The model</a></nav>
+  <div class="spacer"></div>
+  <span id="jobchip" class="chip idle">Idle</span>
+  <button id="runBtn" class="primary">Save and run selected</button>
+</header>
+<main id="designView">
+  <section class="panel" id="formPanel">
+    <h2>Design values</h2>
+    <div class="hint" id="fileHint"></div>
+    <form id="form" autocomplete="off"></form>
+    <div class="row" style="margin-top:12px">
+      <button id="saveBtn" type="button">Save values</button>
+      <button id="revertBtn" type="button">Discard edits</button>
+      <button id="resetBtn" type="button">Restore placeholder defaults</button>
+    </div>
+    <div class="msg" id="formMsg" role="status"></div>
+  </section>
+
+  <div style="display:grid; gap:18px; min-width:0">
+    <section class="panel">
+      <div class="row" style="margin-bottom:10px">
+        <h2 style="margin:0">Experiments</h2>
+        <div class="spacer"></div>
+        <button id="selStale" type="button">Select out of date</button>
+        <button id="selAll" type="button">Select all</button>
+      </div>
+      <div class="cards" id="cards"></div>
+      <div class="hint" style="margin-top:8px" id="runHint"></div>
+      <details id="logBox"><summary>Run log</summary><pre id="log">No run yet in this session.</pre></details>
+    </section>
+    <section class="panel">
+      <div class="tabs" id="tabs" role="tablist"></div>
+      <div class="report" id="report"></div>
+    </section>
+  </div>
+</main>
+<main id="modelView" hidden style="display:block"><section class="panel" style="max-width:1250px;margin:0 auto" id="modelBody"></section></main>
+<script src="/model.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+let S = null;            // last server state
+let activeTab = "e4";
+let selected = null;     // Set of experiment keys ticked for the next run
+let pollTimer = null;
+
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || "Request failed");
+  return j;
+}
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v; else if (k === "text") e.textContent = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids) e.append(k);
+  return e;
+};
+const num = (value, path, label) => el("input", { type: "number", step: "any", value, "data-path": path, "aria-label": label });
+
+// ---------------------------------------------------------------- form
+function buildForm(cfg) {
+  const f = $("form");
+  f.replaceChildren();
+  for (const [sec, title] of Object.entries(S.sections)) {
+    const grid = el("div", { class: "fields" });
+    for (const [key, [label, unit]] of Object.entries(S.labels[sec])) {
+      const id = `f_${sec}_${key}`;
+      const input = num(cfg[sec][key], `${sec}.${key}`);
+      input.id = id;
+      grid.append(el("label", { for: id, text: label }), input, el("span", { class: "unit", text: unit }));
+    }
+    f.append(el("details", { open: sec === "geometry_mm" || sec === "layout_mm" }, el("summary", { text: title }), grid));
+  }
+
+  const jt = el("table", { class: "edit" }, el("tr", {}, ...["Joint", "Min (deg)", "Max (deg)", "Speed (deg/s)", "Accel (deg/s²)", "Ready pose (deg)"].map(t => el("th", { text: t }))));
+  cfg.joints.forEach((j, i) => jt.append(el("tr", {},
+    el("td", { text: S.joint_names[i] }),
+    ...[["q_min_deg", "minimum angle"], ["q_max_deg", "maximum angle"], ["vmax_deg", "speed limit"], ["amax_deg", "acceleration limit"]]
+      .map(([k, what]) => el("td", {}, num(j[k], `joints.${i}.${k}`, `${S.joint_names[i]} ${what}`))),
+    el("td", {}, num(cfg.ready_q_deg[i], `ready_q_deg.${i}`, `${S.joint_names[i]} ready angle`)))));
+  f.append(el("details", {}, el("summary", { text: "Joint limits, speeds and ready pose" }), el("div", { class: "tablewrap" }, jt)));
+
+  const mt = el("table", { class: "edit", id: "massTable" }, el("tr", {}, ...["Part", "Moves with", "Mass (g)", "x (mm)", "y (mm)", "z (mm)", "Fingers", ""].map(t => el("th", { text: t }))));
+  cfg.masses.forEach(m => mt.append(massRow(m)));
+  f.append(el("details", {},
+    el("summary", {}, "Mass budget ", el("span", { class: "hint", id: "massTotal" })),
+    el("div", { class: "hint", text: "Position is the part's centre of mass in the frame of the joint it moves with: origin on that joint's axis, z along the link." }),
+    el("div", { class: "tablewrap" }, mt),
+    el("button", { type: "button", style: "margin-top:6px", onclick: () => { mt.append(massRow({ name: "new part", link: 2, mass_g: 10, pos_mm: [0, 0, 0], finger: false })); onEdit(); } }, "Add part")));
+  onEdit();
+}
+function massRow(m) {
+  const sel = el("select", { "data-m": "link", "aria-label": "moves with" }, ...S.joint_names.map((n, i) => el("option", { value: i + 1, selected: m.link === i + 1, text: n })));
+  const tr = el("tr", { class: "mass" },
+    el("td", {}, el("input", { type: "text", value: m.name, "data-m": "name", "aria-label": "part name" })),
+    el("td", {}, sel),
+    el("td", {}, el("input", { type: "number", step: "any", value: m.mass_g, "data-m": "mass_g", "aria-label": "mass" })),
+    ...[0, 1, 2].map(k => el("td", {}, el("input", { type: "number", step: "any", value: m.pos_mm[k], "data-m": "p" + k, "aria-label": "position " + "xyz"[k] }))),
+    el("td", {}, el("input", { type: "radio", name: "finger", checked: m.finger, "data-m": "finger", "aria-label": "this row is the fingers" })),
+    el("td", {}, el("button", { type: "button", class: "icon", title: "Remove part", "aria-label": "Remove part", onclick: () => { tr.remove(); onEdit(); } }, "×")));
+  return tr;
+}
+function gather() {
+  const cfg = JSON.parse(JSON.stringify(S.config));
+  document.querySelectorAll("#form [data-path]").forEach(inp => {
+    const path = inp.dataset.path.split(".");
+    let o = cfg;
+    for (const p of path.slice(0, -1)) o = o[p];
+    o[path.at(-1)] = inp.value === "" ? null : Number(inp.value);
+  });
+  cfg.masses = [...document.querySelectorAll("#massTable tr.mass")].map(tr => {
+    const g = (k) => tr.querySelector(`[data-m=${k}]`);
+    return { name: g("name").value, link: Number(g("link").value), mass_g: g("mass_g").value === "" ? null : Number(g("mass_g").value),
+             pos_mm: [0, 1, 2].map(k => Number(g("p" + k).value)), finger: g("finger").checked };
+  });
+  return cfg;
+}
+const isDirty = () => JSON.stringify(gather()) !== JSON.stringify(S.config);
+function onEdit() {
+  const cfg = gather();
+  const total = cfg.masses.reduce((a, m) => a + (m.mass_g || 0), 0);
+  $("massTotal").textContent = `(${cfg.masses.length} parts, ${total.toFixed(0)} g)`;
+  document.querySelectorAll("#form [data-path]").forEach(inp => {
+    const path = inp.dataset.path.split(".");
+    let o = S.config;
+    for (const p of path) o = o?.[p];
+    inp.classList.toggle("changed", Number(inp.value) !== o);
+  });
+  const dirty = isDirty();
+  $("saveBtn").disabled = $("revertBtn").disabled = !dirty;
+  $("fileHint").textContent = dirty ? "You have unsaved edits (highlighted)."
+    : S.saved_file ? "Saved in arm_config.json." : "Showing the placeholder defaults. Nothing saved yet.";
+}
+function say(text, kind) { const m = $("formMsg"); m.textContent = text; m.className = "msg " + (kind || ""); }
+
+// ---------------------------------------------------------------- experiments
+const fmt = (v, d = 1) => (v == null || Number.isNaN(v)) ? "–" : Number(v).toFixed(d);
+function numbers(k, r) {
+  if (!r) return [];
+  if (k === "e1") return [["IK poses recovered", `${r.ik.recovered} / ${r.ik.n}`], ["Task poses reachable", r.all_ok ? "yes" : "NO"]];
+  if (k === "e2") return [["Shoulder safety factor", fmt(r.sf[1])], ["Elbow safety factor", fmt(r.sf[2])]];
+  if (k === "e3") return [["Time per object", fmt(r.per_object) + " s"], ["Peak step rate", fmt(r.peak_step_rate / 1000) + " kHz"]];
+  if (k === "e4") return [["Objects in right bin", r.placed.every(Boolean) ? "all" : "NO"], ["Peak torque use", fmt(Math.max(...r.peak_util) * 100, 0) + " %"], ["Clearance to bins", fmt(r.min_clear_bins_mm, 0) + " mm"]];
+  if (k === "e5") return [["Normal running", fmt(r.typical_W, 0) + " W"], ["Worst fault", fmt(r.worst_W, 0) + " W"]];
+  return [];
+}
+function status(k) {
+  const job = S.job, m = S.meta[k];
+  if (job.running && job.names.includes(k)) {
+    if (job.current === k) return ["run", "Running"];
+    if (!job.done.includes(k)) return ["idle", "Queued"];
+  }
+  if (!m) return ["idle", "Not run"];
+  if (m.status === "failed") return ["bad", m.config === S.hash ? "Failed" : "Failed (older values)"];
+  return m.config === S.hash ? ["ok", "Up to date"] : ["warn", "Out of date"];
+}
+function renderCards() {
+  if (!selected) selected = new Set(Object.keys(S.experiments).filter(k => status(k)[0] !== "ok"));
+  const box = $("cards");
+  box.replaceChildren();
+  let secs = 0;
+  for (const [k, e] of Object.entries(S.experiments)) {
+    const [cls, text] = status(k), m = S.meta[k];
+    if (selected.has(k)) secs += e.seconds;
+    const cb = el("input", { type: "checkbox", checked: selected.has(k), id: "cb_" + k,
+      onchange: (ev) => { ev.target.checked ? selected.add(k) : selected.delete(k); renderCards(); } });
+    const nums = el("div", { class: "nums" });
+    if (m?.status === "failed") nums.append(el("div", { class: "err", text: m.error || "failed" }));
+    else if (m) numbers(k, S.results[k]).forEach(([a, b]) => nums.append(el("div", {}, el("span", { text: a }), el("span", { text: b }))));
+    box.append(el("div", { class: "card" },
+      el("div", { class: "top" }, cb, el("label", { class: "name", for: "cb_" + k, text: `${k.toUpperCase()} ${e.title}` })),
+      el("div", {}, el("span", { class: "chip " + cls, text: text })), nums,
+      el("button", { type: "button", onclick: () => showReport(k), disabled: !e.has_report }, "Open report")));
+  }
+  $("runHint").textContent = selected.size ? `${selected.size} selected, about ${secs} s.` : "Nothing selected.";
+  const running = S.job.running;
+  $("runBtn").disabled = running || !selected.size;
+  $("runBtn").textContent = running ? "Running…" : "Save and run selected";
+  const chip = $("jobchip");
+  if (running) { chip.className = "chip run"; chip.textContent = `Running ${S.job.current ? S.job.current.toUpperCase() : ""} (${S.job.done.length}/${S.job.names.length})`; }
+  else if (S.job.returncode === 0) { chip.className = "chip ok"; chip.textContent = "Last run finished"; }
+  else if (S.job.returncode != null) { chip.className = "chip bad"; chip.textContent = "Last run had failures"; }
+  else { chip.className = "chip idle"; chip.textContent = "Idle"; }
+  if (S.job.log.length) { const lg = $("log"); lg.textContent = S.job.log.join("\n"); lg.scrollTop = lg.scrollHeight; }
+  if (S.job.returncode) $("logBox").open = true;
+}
+function renderTabs() {
+  $("tabs").replaceChildren(...Object.entries(S.experiments).map(([k, e]) =>
+    el("button", { type: "button", role: "tab", "aria-selected": k === activeTab, class: k === activeTab ? "active" : "", onclick: () => showReport(k) }, `${k.toUpperCase()} ${e.title}`)));
+}
+async function showReport(k, scroll = true) {
+  activeTab = k;
+  renderTabs();
+  const r = await api("/api/report?name=" + k);
+  $("report").innerHTML = r.html;   // HTML is produced by the local server from our own generated reports
+  if (scroll) $("tabs").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// ---------------------------------------------------------------- actions
+async function poll() {
+  clearTimeout(pollTimer);
+  const cfgBefore = S.config;
+  S = await api("/api/state");
+  S.config = cfgBefore;                      // keep the form's baseline; values did not change during the run
+  if (S.job.running) { renderCards(); pollTimer = setTimeout(poll, 1000); return; }
+  selected = new Set(Object.keys(S.experiments).filter(k => status(k)[0] !== "ok"));
+  renderCards();
+  showReport(activeTab, false);
+}
+async function save() {
+  try { S = await api("/api/config", gather()); selected = null; buildForm(S.config); renderCards(); say("Saved. Experiments run with older values are now marked out of date.", "ok"); return true; }
+  catch (e) { say(e.message, "err"); return false; }
+}
+$("form").addEventListener("input", onEdit);
+$("saveBtn").onclick = save;
+$("revertBtn").onclick = () => { buildForm(S.config); say("", ""); };
+$("resetBtn").onclick = async () => {
+  if (!confirm("Replace every value with the placeholder defaults? Your saved values in arm_config.json will be removed.")) return;
+  S = await api("/api/reset", {}); selected = null; buildForm(S.config); renderCards(); say("Placeholder defaults restored.", "ok");
+};
+$("selAll").onclick = () => { selected = new Set(Object.keys(S.experiments)); renderCards(); };
+$("selStale").onclick = () => { selected = null; renderCards(); };
+$("runBtn").onclick = async () => {
+  try {
+    const names = Object.keys(S.experiments).filter(k => selected.has(k));
+    S = await api("/api/run", { names, config: gather() });
+    buildForm(S.config); say("", ""); $("logBox").open = true; renderCards(); poll();
+  } catch (e) { say(e.message, "err"); }
+};
+window.addEventListener("beforeunload", (e) => { if (S && isDirty()) e.preventDefault(); });
+
+(async () => {
+  S = await api("/api/state");
+  buildForm(S.config); renderCards(); showReport(activeTab, false);
+  if (S.job.running) poll();
+  route();
+})();
+</script>
+</body>
+</html>

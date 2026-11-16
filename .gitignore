@@ -1,0 +1,34 @@
+.venv/
+__pycache__/
+*.pyc
+.python-version
+graft/.cache/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+
+# explainer video build files (regenerable)
+video/build/
+
+# local tooling
+.claude/
+.ignore
+
+# organisers' spec and the book PDF as downloaded: documents, not source code
+RAS-Build-Challenge-Design-Phase-Spec-Book.pdf
+DesignBookV0.pdf
+
+# large generated media: rebuild with `python -m video.build` and `python -m experiments.run_all`
+reports/media/project_explainer.mp4
+reports/media/e4_pick_place.gif
+
+# generated on first use
+vision/assets/pick_mat_sim.png
+
+# LaTeX build leftovers
+design_book/*.aux
+design_book/*.log
+design_book/*.out
+
+# packaged for the teammate (regenerable)
+design_book/*.zip

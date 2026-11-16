@@ -1,0 +1,32 @@
+{
+  "e1": {
+    "config": "e3ba69f19812",
+    "time": "2026-11-12T17:20:46",
+    "status": "ok",
+    "seconds": 8.8
+  },
+  "e2": {
+    "config": "e3ba69f19812",
+    "time": "2026-11-12T17:20:55",
+    "status": "ok",
+    "seconds": 35.4
+  },
+  "e3": {
+    "config": "e3ba69f19812",
+    "time": "2026-11-12T17:21:30",
+    "status": "ok",
+    "seconds": 6.2
+  },
+  "e4": {
+    "config": "e3ba69f19812",
+    "time": "2026-11-12T17:21:36",
+    "status": "ok",
+    "seconds": 47.2
+  },
+  "e5": {
+    "config": "e3ba69f19812",
+    "time": "2026-11-12T17:22:23",
+    "status": "ok",
+    "seconds": 0.2
+  }
+}

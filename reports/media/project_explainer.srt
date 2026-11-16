@@ -1,0 +1,284 @@
+1
+00:00:00,000 --> 00:00:06,158
+This video is a crash course on our robotic arm project, written for a software engineer.
+
+2
+00:00:06,458 --> 00:00:14,591
+By the end you should understand what the machine is made of, why each part was chosen, and what the numbers in our reports mean.
+
+3
+00:00:14,917 --> 00:00:24,795
+One warning first: every dimension and mass you will see is a placeholder until the CAD exists. The method is final, the numbers are not.
+
+4
+00:00:25,667 --> 00:00:40,894
+The job, from the spec book, is easy to state. Home every axis against its limit switch, pick a light object from one fixed spot, read its colour, and drop it in the matching bin, moving all six axes.
+
+5
+00:00:41,208 --> 00:00:45,127
+The minimum demonstration is two colours and two bins.
+
+6
+00:00:45,458 --> 00:00:56,891
+The hardware is fixed: three stepper motors for the big joints, four hobby servos for the wrist and gripper, an Arduino Uno with a motor shield, and a colour sensor.
+
+7
+00:00:57,208 --> 00:01:06,211
+The jury rewards justified decisions backed by calculation and simulation, and the design book is due on the sixteenth of November at midnight.
+
+8
+00:01:07,083 --> 00:01:11,532
+Here is the whole system, seen as a software architecture.
+
+9
+00:01:11,833 --> 00:01:21,341
+On the left, a normal computer runs Python. It plans the motions, solves the geometry, and runs our simulations.
+
+10
+00:01:21,667 --> 00:01:36,619
+It talks over a USB serial cable, with simple text commands, to the Arduino. Think of the Arduino as the firmware layer: it must produce exact timing, which a desktop operating system cannot guarantee.
+
+11
+00:01:36,958 --> 00:01:45,366
+For the three big joints, the Arduino sends step and direction pulses to stepper drivers, which energise the motor coils.
+
+12
+00:01:45,667 --> 00:01:55,624
+For the wrist and gripper, it sends angle commands over an I²C bus to a board that drives the four servos. The same bus reads the colour sensor.
+
+13
+00:01:55,958 --> 00:02:01,527
+Finally, plain digital inputs read the limit switches and the proximity sensor.
+
+14
+00:02:02,417 --> 00:02:09,700
+Mechanically, an arm is a chain of rigid links connected by joints, and each joint is one degree of freedom.
+
+15
+00:02:10,000 --> 00:02:16,503
+Six joints means the arm's whole pose is a vector of six numbers, like a struct of six floats.
+
+16
+00:02:16,833 --> 00:02:26,316
+Forward kinematics is a pure function from those six angles to where the tool tip is and how it is oriented. It always has exactly one answer.
+
+17
+00:02:26,625 --> 00:02:38,113
+Inverse kinematics is the reverse: given where you want the tip, find the angles. That one can have several answers, or none, if the target is out of reach.
+
+18
+00:02:38,417 --> 00:02:47,689
+Our wrist is built so its last three axes cross at one point, which makes the inverse problem a formula, instead of a slow numerical search.
+
+19
+00:02:48,542 --> 00:02:59,209
+Here is our simulated arm moving each joint alone, so you can see what the six axes really are. J1 is the base: it spins the whole arm left and right.
+
+20
+00:02:59,542 --> 00:03:07,740
+J2, the shoulder, tilts everything forward and back, and J3, the elbow, folds the forearm.
+
+21
+00:03:08,042 --> 00:03:16,140
+J4 rolls the forearm like turning a screwdriver, J5 nods the hand up and down, and J6 spins the gripper.
+
+22
+00:03:16,458 --> 00:03:22,147
+Together they let the hand reach a point, and also choose which way the gripper faces.
+
+23
+00:03:23,000 --> 00:03:34,747
+The workspace is the set of places the tip can reach. In this side view, the green area is everywhere the tip can go while pointing straight down, which is how we grab objects.
+
+24
+00:03:35,083 --> 00:03:43,666
+The pick spot and both bins sit inside it, with comfortable margin from the edge and from every joint limit, so the layout is feasible.
+
+25
+00:03:44,000 --> 00:03:53,893
+We also tested the inverse kinematics code on two thousand random poses. It recovered every one, with errors around ten to the minus twelve.
+
+26
+00:03:54,750 --> 00:03:59,369
+Now the physics that drives most mechanical decisions: torque.
+
+27
+00:03:59,708 --> 00:04:10,736
+Torque is a twisting force: the force times the distance from the pivot. Hold a heavy bag at arm's length and your shoulder works far harder than with the bag against your chest.
+
+28
+00:04:11,042 --> 00:04:25,869
+For our arm stretched out horizontally, about one point one kilograms hang beyond the shoulder, with an average lever of about twenty two centimetres. That is about two point four newton metres: the worst load any joint sees.
+
+29
+00:04:26,208 --> 00:04:37,496
+Our rule is that every joint must be able to hold at least two and a half times its worst load, because motors deliver less torque while moving, and because our masses are only estimates.
+
+30
+00:04:38,375 --> 00:04:45,468
+The problem: a stepper motor holds only about half a newton metre, but the shoulder needs two point four.
+
+31
+00:04:45,792 --> 00:04:59,039
+The fix is a mechanical transformer. A gearbox, or a belt between two pulleys, multiplies torque by its ratio and divides speed by the same ratio, minus a few percent lost to friction.
+
+32
+00:04:59,375 --> 00:05:18,891
+Our geared motor goes on the shoulder. The gearbox gives five point one eight to one, and a belt from a sixteen tooth pulley to a sixty four tooth pulley adds four to one. Together that is about twenty one to one, turning point four two newton metres into seven point four, a safety factor of three.
+
+33
+00:05:19,208 --> 00:05:30,816
+The price is speed: the shoulder turns twenty times slower than its motor. The elbow gets a plain motor and a six to one belt, with a safety factor of two point seven.
+
+34
+00:05:31,667 --> 00:05:43,204
+Now the electrical side, starting with the stepper motor. It turns in small fixed increments: two hundred steps per revolution, so one point eight degrees each.
+
+35
+00:05:43,542 --> 00:05:57,659
+You control it like a counter. A driver chip, the TMC2209, takes two signals: direction, a single level, and step, where every pulse means move one increment.
+
+36
+00:05:58,000 --> 00:06:10,467
+Microstepping lets the driver split each step into eight, so sixteen hundred pulses make one turn. Combined with our gearing, that is about ninety two pulses per degree at the shoulder.
+
+37
+00:06:10,792 --> 00:06:26,358
+The catch is that a stepper has no sensor. The program only believes it knows the angle, and an overloaded motor silently skips steps. That is why every start-up begins with homing against a limit switch, to re-establish zero.
+
+38
+00:06:26,667 --> 00:06:33,900
+Also, a stepper holding position still draws full current, so it runs warm even when the arm is still.
+
+39
+00:06:34,792 --> 00:06:47,484
+Servos work the opposite way. A hobby servo hides a motor, a gearbox, a position sensor, and a small controller in one box, so it closes its own feedback loop.
+
+40
+00:06:47,792 --> 00:06:58,919
+You give it a setpoint: a pulse repeated fifty times per second, whose width, between half a millisecond and two and a half milliseconds, encodes the target angle.
+
+41
+00:06:59,250 --> 00:07:11,947
+Generating those pulses precisely for several servos would eat the Arduino's time, so a PCA9685 board does it in hardware. We only send it angles over I²C.
+
+42
+00:07:12,250 --> 00:07:26,107
+Servo torque is quoted in kilogram centimetres, a hobbyist unit. Multiply by zero point zero nine eight to get newton metres: our twenty kilogram centimetre servos give about two newton metres.
+
+43
+00:07:26,417 --> 00:07:36,774
+The limitation: you cannot read the angle back, so a servo cannot be homed with a switch, and the spec book's home every axis needs a workaround for the wrist.
+
+44
+00:07:37,625 --> 00:07:50,548
+Next, power. Three quantities matter: voltage, which you can think of as pressure; current, the flow; and power, the product of the two, measured in watts.
+
+45
+00:07:50,875 --> 00:08:08,791
+Our supply makes twenty four volts. That goes through a fuse and the emergency stop to the stepper drivers. A buck converter, which is an efficient step down regulator, makes six volts for the servos, and a second one makes five volts for the Arduino and sensors.
+
+46
+00:08:09,125 --> 00:08:32,875
+Why not one rail? When a servo starts moving it pulls a sudden current spike, which makes the voltage dip. If the Arduino shared that rail it would reset in the middle of a motion. Separate regulators work like separate services, so one noisy neighbour cannot take down the others. All the grounds are joined, so every signal shares a common reference.
+
+47
+00:08:33,208 --> 00:08:44,311
+Our estimate is about twenty nine watts in normal running, and eighty four watts in the worst fault, from a three hundred watt supply. So raw power is not the problem.
+
+48
+00:08:44,625 --> 00:08:56,722
+The real risk is a fault. If all four servos stall at once they would draw ten amps, more than the eight amp converter can give, so the firmware must detect a blocked gripper and stop.
+
+49
+00:08:57,583 --> 00:09:09,901
+Now the sensors. I²C is a two wire bus that many chips share. Each device has an address, like an endpoint: ours are the servo board and the colour sensor.
+
+50
+00:09:10,208 --> 00:09:24,820
+The colour sensor reports counts of red, green, blue and clear light. We classify by comparing ratios, for example red divided by blue, instead of trusting absolute values, which change with room light.
+
+51
+00:09:25,125 --> 00:09:35,062
+The infrared proximity sensor is simpler: one digital signal that flips when an object is in front of it, telling us an object has arrived at the pick spot.
+
+52
+00:09:35,375 --> 00:09:51,567
+The three limit switches are mechanical buttons at the end of each stepper joint. At power on we creep toward each switch, stop the instant it closes, declare that angle to be the known reference, back off slightly, and only then trust the step counter.
+
+53
+00:09:52,417 --> 00:10:07,403
+Now the software. The Arduino Uno has a sixteen megahertz processor and two kilobytes of memory, so we keep it simple: the PC does the geometry and sends joint targets, and the Arduino only executes them.
+
+54
+00:10:07,708 --> 00:10:20,411
+Motion is never instant. We use a trapezoidal speed profile: accelerate, cruise, brake. That avoids jerks that would make a stepper skip steps or shake the arm.
+
+55
+00:10:20,750 --> 00:10:38,511
+The Arduino must emit step pulses at exactly the right moments. Our plan needs about three point eight thousand pulses per second at peak, close to the roughly four thousand a simple polling loop can do. If pulses are missed, we move stepping into a timer interrupt.
+
+56
+00:10:38,833 --> 00:10:49,656
+The behaviour itself is a small state machine: home, wait for an object, read the colour, pick, place in the matching bin, return, and repeat.
+
+57
+00:10:50,542 --> 00:11:00,334
+We checked the design with five experiments. Each produces a report with plots, and all of them regenerate from the dashboard when the values change.
+
+58
+00:11:00,667 --> 00:11:23,612
+Kinematics shows every task pose is reachable. The torque study chose the gearing. Timing gives about six and a half seconds per object. The physics simulation runs the whole cycle with the real masses, and the busiest joint, the elbow, uses forty five percent of its available torque. Power is far below the supply's limit.
+
+59
+00:11:24,500 --> 00:11:31,953
+Watch the sort cycle. The arm goes above the pick spot, straight down, and closes the gripper.
+
+60
+00:11:32,292 --> 00:11:38,695
+It lifts, swings to the red bin, turns the wrist, lowers, and opens.
+
+61
+00:11:39,000 --> 00:11:45,468
+Then it repeats for the blue cube, turning the wrist the other way, and returns to its ready pose.
+
+62
+00:11:45,792 --> 00:11:53,435
+Notice that every move starts and ends gently. That is the trapezoid speed profile from the firmware section.
+
+63
+00:11:54,292 --> 00:12:08,089
+Let us be honest about what is uncertain. Every length and mass is a placeholder until your mechanical teammate shares the CAD. The geared motor's torque and the gearbox efficiency are assumed from typical values.
+
+64
+00:12:08,417 --> 00:12:17,214
+The pulse rate of the Arduino is untested, the grip itself is not simulated, and collisions between parts of the arm are not checked.
+
+65
+00:12:17,542 --> 00:12:32,724
+So the next steps are: get the real dimensions, masses and centres of mass, type them into the dashboard and rerun everything. Check the datasheets, and email the organisers early about a third pulley and a smaller fuse.
+
+66
+00:12:33,042 --> 00:12:41,075
+Then write the design book from the reports, record the final video, test every link, and submit before the deadline.
+
+67
+00:12:41,958 --> 00:12:49,957
+To recap. Six joints are six numbers, and kinematics converts between joint angles and tool position.
+
+68
+00:12:50,292 --> 00:12:55,585
+Torque is force times distance, and gears and belts trade speed for torque.
+
+69
+00:12:55,917 --> 00:13:03,330
+Steppers count pulses and need homing. Servos take angle commands, but cannot report back.
+
+70
+00:13:03,667 --> 00:13:10,575
+Separate power rails keep the motors from resetting the brain, and fault cases matter more than normal running.
+
+71
+00:13:10,875 --> 00:13:19,573
+The computer plans and the Arduino executes. Open the dashboard to explore the numbers, and good luck with the design book.
+
