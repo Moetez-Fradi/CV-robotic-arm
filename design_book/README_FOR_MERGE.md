@@ -12,6 +12,7 @@ Table and figure numbers follow automatically. In the stand-alone PDF they start
 at Table 11 / Figure 14.
 
 Also change elsewhere in the book (suggested wording is in the comments at the bottom of `section6_computer_vision.tex`):
+* 5.1 Repository and README: replace "[To be completed: repository link]" with https://github.com/Moetez-Fradi/CV-robotic-arm
 * 1.3.2 Motion strategy: the colour is read before the grasp, while the arm waits at the ready pose.
 * 1.3.3 Algorithms: add the one-paragraph description of the colour classification.
 * 1.6 Bill of materials: camera line "USB webcam + printed A4 pick mat + LED light". The pick mat to print is

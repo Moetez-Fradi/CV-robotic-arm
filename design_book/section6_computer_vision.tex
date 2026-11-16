@@ -23,7 +23,8 @@ priority: the colour is needed for the demonstration, the other two goals are ex
 \paragraph{Software.} The vision code is a plain Python package (no ROS) that uses OpenCV and NumPy
 (Table~\ref{tab:cv-modules}). The task sequencer calls one function, \texttt{read\_stable()}, and gets one answer: object
 present or not, its colour, a confidence value, and its $x, y, z$ in millimetres in the arm's frame. The sequencer uses it to
-choose the bin and the grasp point. The vision code does not talk to the ESP32.
+choose the bin and the grasp point. The vision code does not talk to the ESP32. The code is in the folder \texttt{vision/} of the project repository,
+\texttt{github.com/Moetez-Fradi/CV-robotic-arm}.
 
 \begin{table}[h]
   \centering
