@@ -131,8 +131,9 @@ def white_balance(top, obj_mask=None):
         ref_mask[cv2.dilate(obj_mask, np.ones((21, 21), np.uint8)) > 0] = 0
     px = top[ref_mask > 0].reshape(-1, 3).astype(np.float64)
     bright = px.sum(axis=1)
-    px = px[bright > np.percentile(bright, 20)]          # skip shadows and printed lines
-    ref = np.median(px, axis=0)
+    if len(px):
+        px = px[bright >= np.percentile(bright, 20)]     # skip shadows and printed lines (>= keeps a uniform mat)
+    ref = np.median(px, axis=0) if len(px) else np.full(3, mat.GREY * 0.85)   # no mat visible: leave the colours as they are
     gain = (mat.GREY * 0.85) / np.maximum(ref, 1.0)
     return np.clip(top.astype(np.float64) * gain, 0, 255).astype(np.uint8), ref
 

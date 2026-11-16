@@ -29,7 +29,7 @@ Six frames per colour at nominal light, object on the cross. Stored in `vision/c
 | Colour | Hue centroid (deg) | Saturation | Frames |
 |---|---|---|---|
 | red | 0.0 | 0.78 | 6 |
-| blue | 220.1 | 0.78 | 6 |
+| blue | 219.9 | 0.78 | 6 |
 
 ## Test campaign
 
@@ -72,8 +72,8 @@ next to its calibrated centroid.
 
 ## Timing
 
-Median 102 ms per frame, 95 % below 130 ms, on the team laptop in Python
-(337 ms per test including rendering). One decision is needed per object, so this is not a constraint.
+Median 79 ms per frame, 95 % below 100 ms, on the team laptop in Python
+(276 ms per test including rendering). One decision is needed per object, so this is not a constraint.
 
 ## What this decides
 

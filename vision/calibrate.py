@@ -10,7 +10,8 @@
       Reports the marker reprojection error and the measured position of an object on the cross.
 
 Results go to vision/calib.json, which vision.live and the sequencer read.
-The pick-spot position in arm coordinates comes from the design values (arm_config.json) unless --pick X Y is given.
+The pick spot (the printed cross) is at x=280, y=0 mm in the arm frame unless --pick X Y is given; set it to the real
+position once the cell is built. (In the CV-robotic-arm repository the default comes from its design values.)
 """
 from __future__ import annotations
 
@@ -40,8 +41,11 @@ def default_calib(width, height, pick) -> Calib:
             c.pick_xy = list(pick)
         return c
     if pick is None:
-        from arm import params as P
-        pick = [P.PICK_XY[0] * 1e3, P.PICK_XY[1] * 1e3]
+        try:                              # inside the CV-robotic-arm repository: use its design values
+            from arm import params as P
+            pick = [P.PICK_XY[0] * 1e3, P.PICK_XY[1] * 1e3]
+        except ImportError:               # standalone copy of the vision package
+            pick = [280.0, 0.0]
     # until the intrinsics are calibrated: a typical webcam, 45 deg vertical field of view
     return Calib(K=intrinsics_from_fov(width, height, 45).tolist(), dist=[0, 0, 0, 0, 0], pick_xy=list(pick))
 
