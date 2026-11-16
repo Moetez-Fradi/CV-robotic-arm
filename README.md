@@ -99,6 +99,7 @@ with the arm drawn joint by joint. Everything regenerates from the saved values.
 | `video/` | builds the narrated explainer video (`python -m video.build`, Windows voices) |
 | `design_book/` | section 6 of the book (`.tex`, figures, compiled pages) and `MISSING.md`, the list of what the book still lacks |
 | `reports/` | generated reports, figures, data |
+| `simulation/` | Gazebo (ROS 2 Humble) simulation of the v0 arm from the SolidWorks URDF: sorting cell, homing, IK, pick-and-place, E-stop; see [`simulation/README.md`](simulation/README.md) |
 
 ## Known gaps
 
@@ -111,7 +112,7 @@ with the arm drawn joint by joint. Everything regenerates from the saved values.
 
 ## What is not in this repository
 
-Joint-board and master firmware, KiCad project, wiring and pinout, CAD and print files, Gazebo model. Add links here when
+Joint-board and master firmware, KiCad project, wiring and pinout, CAD and print files. Add links here when
 they exist.
 
 ## Explainer video
